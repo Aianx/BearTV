@@ -24,6 +24,7 @@ import com.fongmi.android.tv.bean.Hot;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Suggest;
+import com.fongmi.android.tv.bean.SuggestTwo;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityCollectBinding;
 import com.fongmi.android.tv.impl.Callback;
@@ -47,6 +48,7 @@ import com.google.android.flexbox.FlexDirection;
 import com.google.android.flexbox.FlexboxLayoutManager;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -127,10 +129,10 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
         mBinding.recycler.setHasFixedSize(true);
         mBinding.recycler.addOnScrollListener(mScroller);
         mBinding.recycler.setAdapter(mSearchAdapter = new SearchAdapter(this));
-        mBinding.wordRecycler.setHasFixedSize(true);
+        mBinding.wordRecycler.setHasFixedSize(false);
         mBinding.wordRecycler.setAdapter(mWordAdapter = new WordAdapter(this));
         mBinding.wordRecycler.setLayoutManager(new FlexboxLayoutManager(this, FlexDirection.ROW));
-        mBinding.recordRecycler.setHasFixedSize(true);
+        mBinding.recordRecycler.setHasFixedSize(false);
         mBinding.recordRecycler.setAdapter(mRecordAdapter = new RecordAdapter(this));
         mBinding.recordRecycler.setLayoutManager(new FlexboxLayoutManager(this, FlexDirection.ROW));
     }
@@ -210,12 +212,21 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
 
     private void getSuggest(String text) {
         mBinding.word.setText(R.string.search_suggest);
-        OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + text).enqueue(new Callback() {
+        mWordAdapter.clear();
+        OkHttp.newCall("https://tv.aiseet.atianqi.com/i-tvbin/qtv_video/search/get_search_smart_box?format=json&page_num=0&page_size=20&key=" + URLEncoder.encode(text)).enqueue(new Callback() {
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (mBinding.keyword.getText().toString().trim().isEmpty()) return;
+                List<String> items = SuggestTwo.get(response.body().string());
+                App.post(() -> mWordAdapter.appendAll(items));
+            }
+        });
+        OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + URLEncoder.encode(text)).enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (mBinding.keyword.getText().toString().trim().isEmpty()) return;
                 List<String> items = Suggest.get(response.body().string());
-                App.post(() -> mWordAdapter.addAll(items));
+                App.post(() -> mWordAdapter.appendAll(items), 200);
             }
         });
     }
@@ -285,7 +296,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     @Override
     public void onLoadMore(String page) {
         Collect activated = mCollectAdapter.getActivated();
-        if (activated.getSite().getKey().equals("all")) return;
+        if ("all".equals(activated.getSite().getKey())) return;
         mViewModel.searchContent(activated.getSite(), mBinding.keyword.getText().toString(), page);
         activated.setPage(Integer.parseInt(page));
         mScroller.setLoading(true);

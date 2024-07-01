@@ -5,12 +5,15 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.db.AppDatabase;
+import com.github.catvod.utils.Json;
+import com.google.common.net.HttpHeaders;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
@@ -20,50 +23,94 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-@Entity(ignoredColumns = {"type", "group", "url", "logo", "epg", "ua", "click", "origin", "referer", "timeout", "header", "playerType", "channels", "groups", "core", "activated", "width"})
+@Entity
 public class Live {
 
     @NonNull
     @PrimaryKey
     @SerializedName("name")
     private String name;
+
+    @Ignore
     @SerializedName("type")
     private int type;
-    @SerializedName("boot")
-    private boolean boot;
-    @SerializedName("pass")
-    private boolean pass;
+
+    @Ignore
     @SerializedName("group")
     private String group;
+
+    @Ignore
     @SerializedName("url")
     private String url;
+
+    @Ignore
+    @SerializedName("jar")
+    private String jar;
+
+    @Ignore
     @SerializedName("logo")
     private String logo;
+
+    @Ignore
     @SerializedName("epg")
     private String epg;
+
+    @Ignore
     @SerializedName("ua")
     private String ua;
+
+    @Ignore
     @SerializedName("click")
     private String click;
+
+    @Ignore
     @SerializedName("origin")
     private String origin;
+
+    @Ignore
     @SerializedName("referer")
     private String referer;
+
+    @Ignore
     @SerializedName("timeout")
     private Integer timeout;
+
+    @Ignore
     @SerializedName("header")
     private JsonElement header;
+
+    @Ignore
     @SerializedName("playerType")
     private Integer playerType;
+
+    @Ignore
     @SerializedName("channels")
     private List<Channel> channels;
+
+    @Ignore
     @SerializedName("groups")
     private List<Group> groups;
+
+    @Ignore
+    @SerializedName("catchup")
+    private Catchup catchup;
+
+    @Ignore
     @SerializedName("core")
     private Core core;
 
+    @SerializedName("boot")
+    private boolean boot;
+
+    @SerializedName("pass")
+    private boolean pass;
+
+    @Ignore
     private boolean activated;
+
+    @Ignore
     private int width;
 
     public static Live objectFrom(JsonElement element) {
@@ -125,12 +172,20 @@ public class Live {
         return TextUtils.isEmpty(url) ? "" : url;
     }
 
+    public String getJar() {
+        return TextUtils.isEmpty(jar) ? "" : jar;
+    }
+
     public String getLogo() {
         return TextUtils.isEmpty(logo) ? "" : logo;
     }
 
     public String getEpg() {
         return TextUtils.isEmpty(epg) ? "" : epg;
+    }
+
+    public void setEpg(String epg) {
+        this.epg = epg;
     }
 
     public String getUa() {
@@ -167,6 +222,10 @@ public class Live {
 
     public List<Group> getGroups() {
         return groups = groups == null ? new ArrayList<>() : groups;
+    }
+
+    public Catchup getCatchup() {
+        return catchup == null ? new Catchup() : catchup;
     }
 
     public Core getCore() {
@@ -240,6 +299,14 @@ public class Live {
         setBoot(item.isBoot());
         setPass(item.isPass());
         return this;
+    }
+
+    public Map<String, String> getHeaders() {
+        Map<String, String> headers = Json.toMap(getHeader());
+        if (!getUa().isEmpty()) headers.put(HttpHeaders.USER_AGENT, getUa());
+        if (!getOrigin().isEmpty()) headers.put(HttpHeaders.ORIGIN, getOrigin());
+        if (!getReferer().isEmpty()) headers.put(HttpHeaders.REFERER, getReferer());
+        return headers;
     }
 
     public static Live find(String name) {

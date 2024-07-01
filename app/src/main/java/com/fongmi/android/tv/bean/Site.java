@@ -6,61 +6,94 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
+import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.gson.ExtAdapter;
 import com.github.catvod.utils.Json;
+import com.github.catvod.utils.Trans;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import okhttp3.Headers;
 
-@Entity(ignoredColumns = {"api", "ext", "jar", "click", "playUrl", "type", "timeout", "playerType", "categories", "header", "style", "activated"})
+@Entity
 public class Site implements Parcelable {
 
     @NonNull
     @PrimaryKey
     @SerializedName("key")
     private String key;
+
+    @Ignore
     @SerializedName("name")
     private String name;
+
+    @Ignore
     @SerializedName("api")
     private String api;
+
+    @Ignore
     @JsonAdapter(ExtAdapter.class)
     @SerializedName("ext")
     private String ext;
+
+    @Ignore
     @SerializedName("jar")
     private String jar;
+
+    @Ignore
     @SerializedName("click")
     private String click;
+
+    @Ignore
     @SerializedName("playUrl")
     private String playUrl;
+
+    @Ignore
     @SerializedName("type")
     private Integer type;
+
+    @Ignore
+    @SerializedName("indexs")
+    private Integer indexs;
+
+    @Ignore
     @SerializedName("timeout")
     private Integer timeout;
+
+    @Ignore
     @SerializedName("playerType")
     private Integer playerType;
+
     @SerializedName("searchable")
     private Integer searchable;
+
     @SerializedName("changeable")
     private Integer changeable;
-    @SerializedName("recordable")
-    private Integer recordable;
+
+    @Ignore
     @SerializedName("categories")
     private List<String> categories;
+
+    @Ignore
     @SerializedName("header")
     private JsonElement header;
+
+    @Ignore
     @SerializedName("style")
     private Style style;
 
+    @Ignore
     private boolean activated;
 
     public static Site objectFrom(JsonElement element) {
@@ -135,10 +168,6 @@ public class Site implements Parcelable {
         return type == null ? 0 : type;
     }
 
-    public void setType(int type) {
-        this.type = type;
-    }
-
     public Integer getTimeout() {
         return timeout == null ? Constant.TIMEOUT_PLAY : Math.max(timeout, 1) * 1000;
     }
@@ -163,16 +192,21 @@ public class Site implements Parcelable {
         this.changeable = changeable;
     }
 
-    public Integer getRecordable() {
-        return recordable == null ? 1 : recordable;
+    public boolean isIndexs() {
+        return getIndexs() == 1;
     }
 
-    public void setRecordable(Integer recordable) {
-        this.recordable = recordable;
+    public Integer getIndexs() {
+        if (Setting.isAggregatedSearch() && (indexs == null || indexs == 1)) return 1;
+        return indexs == null ? 0 : indexs;
     }
 
     public List<String> getCategories() {
         return categories == null ? Collections.emptyList() : categories;
+    }
+
+    public void setCategories(List<String> categories) {
+        this.categories = categories;
     }
 
     public JsonElement getHeader() {
@@ -217,15 +251,6 @@ public class Site implements Parcelable {
         return this;
     }
 
-    public boolean isRecordable() {
-        return getRecordable() == 1;
-    }
-
-    public Site setRecordable(boolean recordable) {
-        if (getRecordable() != 0) setRecordable(recordable ? 1 : 2);
-        return this;
-    }
-
     public boolean isEmpty() {
         return getKey().isEmpty() && getName().isEmpty();
     }
@@ -234,11 +259,18 @@ public class Site implements Parcelable {
         return Headers.of(Json.toMap(getHeader()));
     }
 
+    public Site trans() {
+        if (Trans.pass()) return this;
+        List<String> categories = new ArrayList<>();
+        for (String cate : getCategories()) categories.add(Trans.s2t(cate));
+        setCategories(categories);
+        return this;
+    }
+
     public Site sync() {
         Site item = find(getKey());
         if (item == null) return this;
         if (getChangeable() != 0) setChangeable(Math.max(1, item.getChangeable()));
-        if (getRecordable() != 0) setRecordable(Math.max(1, item.getRecordable()));
         if (getSearchable() != 0) setSearchable(Math.max(1, item.getSearchable()));
         return this;
     }
@@ -278,7 +310,7 @@ public class Site implements Parcelable {
         dest.writeValue(this.playerType);
         dest.writeValue(this.searchable);
         dest.writeValue(this.changeable);
-        dest.writeValue(this.recordable);
+        dest.writeValue(this.indexs);
         dest.writeStringList(this.categories);
         dest.writeParcelable(this.style, flags);
         dest.writeByte(this.activated ? (byte) 1 : (byte) 0);
@@ -297,7 +329,7 @@ public class Site implements Parcelable {
         this.playerType = (Integer) in.readValue(Integer.class.getClassLoader());
         this.searchable = (Integer) in.readValue(Integer.class.getClassLoader());
         this.changeable = (Integer) in.readValue(Integer.class.getClassLoader());
-        this.recordable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.indexs = (Integer) in.readValue(Integer.class.getClassLoader());
         this.categories = in.createStringArrayList();
         this.style = in.readParcelable(Style.class.getClassLoader());
         this.activated = in.readByte() != 0;
